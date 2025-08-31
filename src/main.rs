@@ -1,5 +1,3 @@
-use std::thread;
-use std::time::Duration;
 use std::process::{Command, Stdio};
 use std::io::Write;
 use v4l::prelude::*;
@@ -135,7 +133,7 @@ fn main() -> Result<()> {
         .stderr(Stdio::null())
         .spawn()?;
     
-    let stdin = ffmpeg.stdin.as_mut().unwrap();
+    let mut stdin = ffmpeg.stdin.take().unwrap();
     
     println!("Recording ASCII frames... Press Ctrl+C to stop");
     
