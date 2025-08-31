@@ -16,6 +16,10 @@ const RESIZED_WIDTH: u32 = 240;
 const RESIZED_HEIGHT: u32 = 135;
 const ASCII_CHARS: &[char] = &[' ', '.', '\'', ',', ':', ';', 'c', 'l', 'x', 'o', 'k', 'X', 'd', 'O', '0', 'K', 'N'];
 
+// Reduced output resolution for better performance
+const OUTPUT_WIDTH: u32 = 960;   // Half of 1920
+const OUTPUT_HEIGHT: u32 = 540;  // Half of 1080
+
 fn convert_pixel_to_ascii(intensity: u8) -> char {
     let index = (intensity as usize * (ASCII_CHARS.len() - 1)) / 255;
     ASCII_CHARS[index]
@@ -112,14 +116,13 @@ fn main() -> Result<()> {
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let scale = Scale { x: 8.0, y: 8.0 }; // Smaller font for ASCII art
     
-    // Create frames directory
-    fs::create_dir_all("frames")?;
-    
     println!("Recording ASCII frames... Press Ctrl+C to stop");
     
-    let mut frame_count = 0;
-    let max_frames = 30; // 1 seconds at 30 FPS
+    let mut frames: Vec<RgbImage> = Vec::new(); // Store frames in memory
+    let max_frames = 30 * 5; // 5 seconds at 30 FPS
     
+    // Capture phase - no file I/O
+    println!("Capturing frames...");
     loop {
         // Capture a frame
         let (buf, _) = stream.next()?;
@@ -145,25 +148,32 @@ fn main() -> Result<()> {
         // Convert to ASCII
         let ascii_art = convert_to_ascii(&gray_img);
         
-        // Create final image with ASCII text
-        let ascii_image = create_ascii_image(&ascii_art, &font, scale, 1920, 1080);
+        // Create final image with ASCII text at reduced resolution
+        let ascii_image = create_ascii_image(&ascii_art, &font, scale, OUTPUT_WIDTH, OUTPUT_HEIGHT);
         
-        // Save frame with zero-padded filename for ffmpeg
-        ascii_image.save(format!("frames/frame_{:06}.png", frame_count))?;
+        // Store frame in memory instead of saving to disk
+        frames.push(ascii_image);
         
-        frame_count += 1;
-        
-        // if frame_count % 30 == 0 {
-            println!("Processed {} frames", frame_count);
-        // }
+        println!("Captured frame {}/{}", frames.len(), max_frames);
         
         // Stop after max_frames
-        if frame_count >= max_frames {
+        if frames.len() >= max_frames {
             break;
         }
         
         // Small delay to control frame rate
         // thread::sleep(Duration::from_millis(33)); // ~30 FPS
+    }
+    
+    // Save phase - write all frames to disk at once
+    println!("Saving {} frames to disk...", frames.len());
+    fs::create_dir_all("frames")?;
+    
+    for (i, frame) in frames.iter().enumerate() {
+        frame.save(format!("frames/frame_{:06}.png", i))?;
+        if (i + 1) % 10 == 0 {
+            println!("Saved {}/{} frames", i + 1, frames.len());
+        }
     }
     
     println!("Converting frames to video using ffmpeg...");
