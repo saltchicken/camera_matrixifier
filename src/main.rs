@@ -10,13 +10,13 @@ use rusttype::{Font, Scale};
 use anyhow::Result;
 
 // ASCII conversion settings
-const RESIZED_WIDTH: u32 = 240;
-const RESIZED_HEIGHT: u32 = 135;
+const RESIZED_WIDTH: u32 = 160; // 160
+const RESIZED_HEIGHT: u32 = 90; // 90
 const ASCII_CHARS: &[char] = &[' ', '.', '\'', ',', ':', ';', 'c', 'l', 'x', 'o', 'k', 'X', 'd', 'O', '0', 'K', 'N'];
 
 // Reduced output resolution for better performance
-const OUTPUT_WIDTH: u32 = 960;   // Half of 1920
-const OUTPUT_HEIGHT: u32 = 540;  // Half of 1080
+const OUTPUT_WIDTH: u32 = 1280;
+const OUTPUT_HEIGHT: u32 = 720;
 
 fn convert_pixel_to_ascii(intensity: u8) -> char {
     let index = (intensity as usize * (ASCII_CHARS.len() - 1)) / 255;
@@ -49,7 +49,7 @@ fn create_ascii_image(ascii_art: &[Vec<char>], font: &Font, scale: Scale, output
     
     let v_metrics = font.v_metrics(scale);
     let char_height = v_metrics.ascent - v_metrics.descent;
-    let char_width = scale.x * 0.6; // Approximate character width for monospace
+    let char_width = scale.x * 1.0; // Approximate character width for monospace
     
     for (row_idx, row) in ascii_art.iter().enumerate() {
         for (col_idx, &ch) in row.iter().enumerate() {
@@ -122,7 +122,7 @@ fn main() -> Result<()> {
         .arg("-f").arg("rawvideo")  // Input format
         .arg("-pixel_format").arg("rgb24")  // RGB format
         .arg("-video_size").arg(format!("{}x{}", OUTPUT_WIDTH, OUTPUT_HEIGHT))
-        .arg("-framerate").arg("30")
+        .arg("-framerate").arg("4")
         .arg("-i").arg("pipe:0")  // Read from stdin
         .arg("-c:v").arg("libx264")
         .arg("-pix_fmt").arg("yuv420p")
