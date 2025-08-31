@@ -1,0 +1,11 @@
+[package]
+name = "camera_matrixifier"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.99"
+crossbeam-channel = "0.5.15"
+image = "0.25.6"
+rusttype = "0.9.3"
+v4l = "0.14.0"
