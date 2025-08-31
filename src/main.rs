@@ -1,5 +1,7 @@
 use std::thread;
 use std::time::Duration;
+use std::process::Command;
+use std::fs;
 use v4l::prelude::*;
 use v4l::FourCC;
 use v4l::video::Capture;
@@ -110,7 +112,13 @@ fn main() -> Result<()> {
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let scale = Scale { x: 8.0, y: 8.0 }; // Smaller font for ASCII art
     
+    // Create frames directory
+    fs::create_dir_all("frames")?;
+    
+    println!("Recording ASCII frames... Press Ctrl+C to stop");
+    
     let mut frame_count = 0;
+    let max_frames = 30; // 1 seconds at 30 FPS
     
     loop {
         // Capture a frame
@@ -140,20 +148,44 @@ fn main() -> Result<()> {
         // Create final image with ASCII text
         let ascii_image = create_ascii_image(&ascii_art, &font, scale, 1920, 1080);
         
-        // Save frame (you might want to limit this for performance)
-        // if frame_count % 30 == 0 { // Save every 30th frame
-            ascii_image.save(format!("ascii_frame_{}.png", frame_count))?;
-        // }
+        // Save frame with zero-padded filename for ffmpeg
+        ascii_image.save(format!("frames/frame_{:06}.png", frame_count))?;
         
         frame_count += 1;
         
-        // Small delay to prevent overwhelming the system
-        thread::sleep(Duration::from_millis(16)); // ~60 FPS
+        // if frame_count % 30 == 0 {
+            println!("Processed {} frames", frame_count);
+        // }
         
-        // Break condition (you might want to handle this differently)
-        if frame_count > 1000 {
+        // Stop after max_frames
+        if frame_count >= max_frames {
             break;
         }
+        
+        // Small delay to control frame rate
+        // thread::sleep(Duration::from_millis(33)); // ~30 FPS
+    }
+    
+    println!("Converting frames to video using ffmpeg...");
+    
+    // Use ffmpeg to create video from frames
+    let output = Command::new("ffmpeg")
+        .arg("-y") // Overwrite output file
+        .arg("-framerate").arg("30")
+        .arg("-i").arg("frames/frame_%06d.png")
+        .arg("-c:v").arg("libx264")
+        .arg("-pix_fmt").arg("yuv420p")
+        .arg("ascii_output.mp4")
+        .output()?;
+    
+    if output.status.success() {
+        println!("Video saved as ascii_output.mp4");
+        // Clean up frames directory
+        fs::remove_dir_all("frames")?;
+        println!("Cleaned up temporary frames");
+    } else {
+        println!("Error running ffmpeg: {}", String::from_utf8_lossy(&output.stderr));
+        println!("Frames saved in 'frames' directory");
     }
     
     Ok(())
