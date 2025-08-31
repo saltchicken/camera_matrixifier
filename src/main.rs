@@ -10,8 +10,8 @@ use rusttype::{Font, Scale};
 use anyhow::Result;
 
 // ASCII conversion settings
-const RESIZED_WIDTH: u32 = 160; // 160
-const RESIZED_HEIGHT: u32 = 90; // 90
+const RESIZED_WIDTH: u32 = 80; // 160
+const RESIZED_HEIGHT: u32 = 45; // 90
 const ASCII_CHARS: &[char] = &[' ', '.', '\'', ',', ':', ';', 'c', 'l', 'x', 'o', 'k', 'X', 'd', 'O', '0', 'K', 'N'];
 
 // Reduced output resolution for better performance
@@ -103,7 +103,7 @@ fn main() -> Result<()> {
     let dev = v4l::Device::with_path(device_path)?;
     
     // Set the format
-    let format = v4l::Format::new(1280, 720, FourCC::new(b"MJPG"));
+    let format = v4l::Format::new(320, 180, FourCC::new(b"MJPG"));
     dev.set_format(&format)?;
     
     // Memory-mapped capture stream
@@ -112,7 +112,7 @@ fn main() -> Result<()> {
     // Load a font
     let font_data = include_bytes!("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
-    let scale = Scale { x: 8.0, y: 8.0 }; // Smaller font for ASCII art
+    let scale = Scale { x: 16.0, y: 16.0 }; // Smaller font for ASCII art
     
     println!("Starting ffmpeg process...");
     
@@ -122,7 +122,7 @@ fn main() -> Result<()> {
         .arg("-f").arg("rawvideo")  // Input format
         .arg("-pixel_format").arg("rgb24")  // RGB format
         .arg("-video_size").arg(format!("{}x{}", OUTPUT_WIDTH, OUTPUT_HEIGHT))
-        .arg("-framerate").arg("4")
+        .arg("-framerate").arg("10")
         .arg("-i").arg("pipe:0")  // Read from stdin
         .arg("-c:v").arg("libx264")
         .arg("-pix_fmt").arg("yuv420p")
@@ -138,7 +138,7 @@ fn main() -> Result<()> {
     println!("Recording ASCII frames... Press Ctrl+C to stop");
     
     let mut frame_count = 0;
-    let max_frames = 30; // 1 seconds at 30 FPS
+    let max_frames = 30 * 5; // 5 seconds at 30 FPS
     
     // Real-time capture and streaming
     loop {
